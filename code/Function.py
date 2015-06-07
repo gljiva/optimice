@@ -424,6 +424,8 @@ class Function:
                         elif refs_from[0][0] == None:
                             pass
                         else:
+                            #print map(hex, self.basic_blocks)
+                            #self.PrintBlocks()
                             raise MiscError
                 break
             
@@ -559,8 +561,47 @@ class Function:
                 if debug:
                     print ">Function:_fillInstructionData - Code resurected @ [%08x] [%s]" % (ea, idc.GetMnem(ea))
 
+        ''' Cover case when there is a call to a location that removes pushed eip 
+            from stack as a first instruction eg:
+                pop dword ptr [esp-4]
+                lea esp, [esp+4]
+                add esp, 4 '''
+        i_ea = ea
+        if idc.GetMnem(i_ea) == 'call':
+            replace_call = 0
+            n_ea = idc.GetOperandValue(i_ea, 0)
+            idc.MakeCode(n_ea)
+            print hex(n_ea), idc.GetMnem(n_ea)
+            n_size = 0
+            if idc.GetMnem(n_ea) == 'pop' and idc.GetOpnd(n_ea, 0).find('[esp-4]') >= 0:
+                replace_call = 1
+                n_size = idc.ItemSize(n_ea)
+            elif idc.GetMnem(n_ea) == 'add' and idc.GetOpnd(n_ea, 0) == 'esp' and idc.GetOperandValue(n_ea, 1) == 4:
+                replace_call = 1
+                n_size = idc.ItemSize(n_ea)
+            elif idc.GetMnem(n_ea) == 'lea' and idc.GetOpnd(n_ea, 0) == 'esp' and idc.GetOpnd(n_ea, 1).find('[esp+4]') >= 0:
+                replace_call = 1
+                n_size = idc.ItemSize(n_ea)
+                
+            if replace_call == 1:
+                if idc.Byte(i_ea) == 0xe8:
+                    idc.PatchByte(i_ea, 0xe9)
+                    for cnt in xrange(0, n_size):
+                        idc.PatchByte(n_ea+cnt, 0x90)
+                        
+                    idc.MakeCode(i_ea)
+                    idc.MakeCode(n_ea)
+                    idc.Wait()
+                    if debug:
+                        print '>Function:_fillInstructionData - PatchByte(%08x, 0xE8)' % i_ea, idc.GetDisasm(i_ea)
+                    
+                else:
+                    print '>Function:_fillInstructionData - Potential absoulute call, need to investigate...' 
+                    
         idc.OpHex(ea, -1) #convert to simple disasm
         mnem = idc.GetMnem(ea)
+        if debug:
+            print ">Function:_fillInstructionData setting mnem [%s] from [%08x]" % (mnem, ea)
         
         instr = Instruction()
         
@@ -603,6 +644,8 @@ class Function:
         #populate common data
         instr.SetOriginEA(ea)
         instr.SetMnem(mnem)
+        if debug:
+            print ">Function:_fillInstructionData - Setting disasm", hex(ea), idc.GetDisasm(ea)
         instr.SetDisasm(idc.GetDisasm(ea))
         instr.SetOpcode(''.join(chr(idc.Byte(ea+x)) for x in xrange(0, idc.ItemSize(ea))))
         instr.SetOpnd(idc.GetOpnd(ea, 0), 1)

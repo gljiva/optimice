@@ -364,7 +364,12 @@ class ReduceJMP:
                 flags1 = ''.join(find_flags)
                 flags1_set = set(find_flags)
                 
-                flags2 = [f for f in jcc2_taint.GetFlags('test_f')]
+                if jcc2_taint.GetFlags('test_f') == None:
+                    if debug:
+                        print '>ReduceJMP:JccReduceComplementaryBlock - GetFlags=None!', fpath_instr.GetMnem(), hex(fpath_instr.GetOriginEA())
+                    flags2 = []
+                else:
+                    flags2 = [f for f in jcc2_taint.GetFlags('test_f')]
                 
                 #flags2_map = dict([(x,True) for x in flags2])
                 flags2.sort()

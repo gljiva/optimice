@@ -37,11 +37,10 @@ class DeadCodeElimination:
         
         for offset in xrange(0, len(bb)):
             taint = bb[offset].GetTaintInfo()
-            instr = bb[offset]
-            
             if taint == None:
-                continue
-            
+                continue                
+            instr = bb[offset]
+
             if debug:
                 print ">DeadCodeElimination:ReduceBB - @ [%08x] %s" % (instr.GetOriginEA(), instr.GetDisasm())
             
@@ -109,7 +108,6 @@ class DeadCodeElimination:
             
             for delta in xrange(offset+1, len(bb)):
                 delta_taint = bb[delta].GetTaintInfo()
-                
                 if delta_taint == None:
                     break
                 
@@ -386,6 +384,9 @@ class PeepHole:
                             
                             break
                         
+                        elif push.GetOpnd(1).lower() in ['cs', 'ds', 'es', 'ss']:
+                            continue
+                        
                         else:
                             if push.GetRegSize(push.GetOpnd(1)) == pop.GetRegSize(pop.GetOpnd(1)):
                                 pop.SetMnem("mov")
@@ -417,6 +418,7 @@ class PeepHole:
                             if debug:
                                 print ">PeepHole:PUSHPOP - FAILING on \\x66 opcode [%s]/[%s]!" % (push.GetOpcode()[0].encode('hex'), pop.GetOpcode()[0].encode('hex'))
                             continue
+                    
                     
                     if push_type in [2,3,4] and pop.GetOpndType(1) in [2,3,4]:
                         if debug:
@@ -486,8 +488,7 @@ class PeepHole:
                             break
                         
                         taint = ins.GetTaintInfo()
-                        
-                        if taint == None:
+                        if not taint:
                             break
                         
                         skip_this = 0
@@ -553,7 +554,7 @@ class PeepHole:
                         
                     else:
                         i_taint = ins.GetTaintInfo()
-                        if i_taint == None:
+                        if not i_taint:
                             break
                         
                         i_flags = i_taint.GetFlags('modif_f')
@@ -621,8 +622,7 @@ class PeepHole:
                         else:
                             #check that memory or stack isn't tainted
                             taint = ins.GetTaintInfo()
-                            
-                            if taint == None:
+                            if not taint:
                                 break
                             
                             skip_this = 0
@@ -726,6 +726,8 @@ class PeepHole:
                     regs_to_check = {}
                     
                     xchg_taint = xchg.GetTaintInfo()
+                    if not xchg_taint:
+                        break
                     reg = xchg_taint.GetExOpndRegisters(xchg.GetOpnd(1))
                     
                     if len(reg[0][0]) == 0:
@@ -764,10 +766,12 @@ class PeepHole:
                                 instr.SetOpnd(None, 2)
                                 
                                 modified = True
-                                
                                 break
                         
                         taint = ins.GetTaintInfo()
+                        if not taint:
+                            skip_this = 1
+                            break
                         
                         skip_this = 0
                         for op in taint.GetDstTaints():
