@@ -102,6 +102,9 @@ class Instruction:
         # that is the case for FSTP instruction (and like) where IDA skips first argument and populates
         # only second. This should be handeled explicitly so we dont break tainting.
         
+        if debug:
+            print ">Instruction:PopulateInfoFromDisasm - [%08x]" % self.instr['origin_ea'], self.GetDisasm()
+            
         disas = self.GetDisasm().upper().strip()
         disas = re.sub(r";.*","", disas, 1).strip()
         prefix = re.match(r"((?:LOCK |REPNE |REPNZ |REP |REPE |REPZ |CS(?:\s|:)|SS(?:\s|:)|DS(?:\s|:)|ES(?:\s|:)|FS(?:\s|:)|GS(?:\s|:))*)", disas).group()
@@ -112,7 +115,6 @@ class Instruction:
         ops = [x.strip() for x in disas.split(",")]
         
         if debug:
-            print ">Instruction:PopulateInfoFromDisasm - ", self.GetDisasm()
             print ">Instruction:PopulateInfoFromDisasm - prefix[%s] mnem[%s] ops[%s]" % (prefix, mnem, ';'.join(ops))
         
         self.SetMnemPrefix(prefix, 1)
@@ -210,6 +212,8 @@ class Instruction:
 
 
     def SetMnem(self, mnem, type=0):
+        if debug:
+            print ">Instruction:SetMnem -", mnem, type
         if type == 0:
             self.instr['mnem'] = mnem
         elif type == 1:
@@ -242,6 +246,8 @@ class Instruction:
             return None
 
     def SetDisasm(self, disasm):
+        if debug:
+            print ">Instruction:SetDisasm -", disasm
         disasm = disasm.replace("ht ", "")
         self.instr['disasm'] = disasm
         
